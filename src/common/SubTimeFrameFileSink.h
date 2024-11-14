@@ -49,6 +49,8 @@ class SubTimeFrameFileSink
   static constexpr const char* OptionKeyStfSinkFileName = "data-sink-file-name";
   static constexpr const char* OptionKeyStfSinkStfsPerFile = "data-sink-max-stfs-per-file";
   static constexpr const char* OptionKeyStfSinkStfPercent = "data-sink-stf-percentage";
+  static constexpr const char* OptionKeyStfSinkMinTFIDForceToStore = "data-sink-stf-min-id";
+  static constexpr const char* OptionKeyStfSinkMaxTFIDForceToStore = "data-sink-stf-max-id";
   static constexpr const char* OptionKeyStfSinkFileSize = "data-sink-max-file-size";
   static constexpr const char* OptionKeyStfSinkSidecar = "data-sink-sidecar";
   static constexpr const char* OptionKeyStfSinkEpn2EosMetaDir = "data-sink-epn2eos-meta-dir";
@@ -101,6 +103,8 @@ class SubTimeFrameFileSink
   std::string mCurrentDir;
   std::string mFileNamePattern;
   std::uint64_t mStfsPerFile;
+  std::uint64_t mMinTFIDForceToStore = 0;
+  std::uint64_t mMaxTFIDForceToStore = 0;
   double mPercentageToSave = 100.0;
   std::uint64_t mFileSize;
   bool mSidecar = false;

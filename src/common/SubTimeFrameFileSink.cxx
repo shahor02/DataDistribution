@@ -88,6 +88,12 @@ bpo::options_description SubTimeFrameFileSink::getProgramOptions()
     OptionKeyStfSinkStfPercent,
     bpo::value<double>()->default_value(100.0),
     "Specifies probabilistic acceptance percentage for saving of each (Sub)TimeFrames, between 0.0 and 100. Default: 100.0")(
+    OptionKeyStfSinkMinTFIDForceToStore,
+    bpo::value<std::uint64_t>()->default_value(std::int64_t(0)),
+    "Specifies min TF ID forced to store regardless of requested mean fraction")(
+    OptionKeyStfSinkMaxTFIDForceToStore,
+    bpo::value<std::uint64_t>()->default_value(std::int64_t(0)),
+    "Specifies max TF ID forced to store regardless of requested mean fraction")(
     OptionKeyStfSinkFileSize,
     bpo::value<std::uint64_t>()->default_value(std::uint64_t(4) << 10), /* 4GiB */
     "Specifies target size for (Sub)TimeFrame files in MiB.")(
@@ -127,6 +133,8 @@ bool SubTimeFrameFileSink::loadVerifyConfig(const fair::mq::ProgOptions& pFMQPro
   mStfsPerFile = pFMQProgOpt.GetValue<std::uint64_t>(OptionKeyStfSinkStfsPerFile);
   mFileSize = std::max(std::uint64_t(1), pFMQProgOpt.GetValue<std::uint64_t>(OptionKeyStfSinkFileSize));
   mPercentageToSave = std::clamp(pFMQProgOpt.GetValue<double>(OptionKeyStfSinkStfPercent), 0.0, 100.0);
+  mMinTFIDForceToStore = pFMQProgOpt.GetValue<std::uint64_t>(OptionKeyStfSinkMinTFIDForceToStore);
+  mMaxTFIDForceToStore = pFMQProgOpt.GetValue<std::uint64_t>(OptionKeyStfSinkMaxTFIDForceToStore);
   mFileSize <<= 20; /* in MiB */
   mSidecar = pFMQProgOpt.GetValue<bool>(OptionKeyStfSinkSidecar);
   mEosMetaDir = pFMQProgOpt.GetValue<std::string>(OptionKeyStfSinkEpn2EosMetaDir);
@@ -197,6 +205,8 @@ bool SubTimeFrameFileSink::loadVerifyConfig(const fair::mq::ProgOptions& pFMQPro
   IDDLOG("(Sub)TimeFrame Sink :: root dir         = {}", mRootDir);
   IDDLOG("(Sub)TimeFrame Sink :: file pattern     = {}", mFileNamePattern);
   IDDLOG("(Sub)TimeFrame Sink :: stfs per file    = {}", (mStfsPerFile > 0 ? std::to_string(mStfsPerFile) : "unlimited" ));
+  IDDLOG("(Sub)TimeFrame Sink :: force min TFID   = {}", (mMinTFIDForceToStore > 0 && mMinTFIDForceToStore <= mMaxTFIDForceToStore ? std::to_string(mMinTFIDForceToStore) : "none"));
+  IDDLOG("(Sub)TimeFrame Sink :: force max TFID   = {}", (mMinTFIDForceToStore > 0 && mMinTFIDForceToStore <= mMaxTFIDForceToStore ? std::to_string(mMaxTFIDForceToStore) : "none"));
   IDDLOG("(Sub)TimeFrame Sink :: stfs percentage  = {:.4}", (mPercentageToSave));
   IDDLOG("(Sub)TimeFrame Sink :: max file size    = {}", mFileSize);
   IDDLOG("(Sub)TimeFrame Sink :: sidecar files    = {}", (mSidecar ? "yes" : "no"));
@@ -323,7 +333,7 @@ void SubTimeFrameFileSink::DataHandlerThread(const unsigned pIdx)
     }
 
     // apply rejection rules
-    bool lStfAccepted = (lUniformDist(lGen) <= mPercentageToSave) ? true : false;
+    bool lStfAccepted = (lUniformDist(lGen) <= mPercentageToSave) || (lStf->id() <= mMaxTFIDForceToStore && lStf->id() >= mMinTFIDForceToStore) ? true : false;
 
     if (mEnabled && mReady && lStfAccepted) {
       do {
